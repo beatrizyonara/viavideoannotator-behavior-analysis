@@ -1,0 +1,77 @@
+import pandas as pd
+from tkinter import Tk
+from tkinter.filedialog import asksaveasfilename
+
+csv = r"C:\Users\Biohacker\Documents\Bia Yonara\Code's VIA\EPM_Bia.csv"
+
+def process_elevated_plus_maze(csv_path):
+    df = pd.read_csv(csv_path)
+
+    print(f"Arquivo CSV carregado: {csv_path}")
+
+    # Extração do código do animal
+    df['codigo_animal'] = df['code'].str.split('_').str[0]
+
+    # Conversão para numérico e cálculo da duração
+    df['start_time'] = pd.to_numeric(df['start_time'], errors='coerce')
+    df['end_time'] = pd.to_numeric(df['end_time'], errors='coerce')
+    df['duration'] = df['end_time'] - df['start_time']
+    df = df.dropna()
+
+    # parâmetros
+    def calculate_parameters(df):
+        line_crossings = len(df) - 1
+
+        open_arms_entries = len(df[df['area'] == 'open_arms'])
+        open_arms_total_time = df[df['area'] == 'open_arms']['duration'].sum()
+        open_arms_mean_visit = open_arms_total_time / open_arms_entries if open_arms_entries > 0 else 0
+
+        closed_arms_entries = len(df[df['area'] == 'closed_arms'])
+        closed_arms_total_time = df[df['area'] == 'closed_arms']['duration'].sum()
+        closed_arms_mean_visit = closed_arms_total_time / closed_arms_entries if closed_arms_entries > 0 else 0
+
+        center_entries = len(df[df['area'] == 'center'])
+        center_total_time = df[df['area'] == 'center']['duration'].sum()
+        center_mean_visit = center_total_time / center_entries if center_entries > 0 else 0
+
+        # Obtendo o nome do animal da primeira linha do grupo
+        animal_name = df['animal'].iloc[0]
+
+        return {
+            'Animal': animal_name,
+            'Line Crossings': line_crossings,
+            'Open arms: entries': open_arms_entries,
+            'Open arms: time': open_arms_total_time,
+            'Open arms: mean visit': open_arms_mean_visit,
+            'Closed arms: entries': closed_arms_entries,
+            'Closed arms: time': closed_arms_total_time,
+            'Closed arms: mean visit': closed_arms_mean_visit,
+            'Center: entries': center_entries,
+            'Center: time': center_total_time,
+            'Center: mean visit': center_mean_visit
+        }
+
+    # Lista para armazenar os parâmetros de cada animal
+    animal_parameters = []
+    for animal_id, animal_data in df.groupby('codigo_animal'):
+        print(f"\nProcessando dados para o animal: {animal_id}")
+        parameters = calculate_parameters(animal_data)
+        animal_parameters.append(parameters)
+    
+
+    return pd.DataFrame(animal_parameters)
+
+def save_results(dataframe):
+    root = Tk()
+    root.withdraw()
+    output_path = asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
+    if output_path:
+        dataframe.to_csv(output_path, index=False)
+        print(f"\nResultados salvos em: {output_path}")
+    else:
+        print("\nNenhum arquivo foi selecionado para salvar os resultados.")
+
+print("\nIniciando processamento do arquivo CSV...")
+animal_parameters_df = process_elevated_plus_maze(csv)
+print("\nSalvando resultados...")
+save_results(animal_parameters_df)
